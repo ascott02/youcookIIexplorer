@@ -1,0 +1,20 @@
+$def with(form, video, vid_info)
+<!DOCTYPE html>
+<html>
+<body>
+<h2>YouCookII Dataset Explorer</h2>
+<p>The drop-down has 1790 recipes, and 110 recipe types, taken from <a href=http://youcook2.eecs.umich.edu/>YouCookII</a> training and validation sets.</p>
+
+
+<form method="POST">
+    $:form.render()
+</form>
+
+$if video != None:
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/$video" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <br>
+    $for i in vid_info:
+        $:i
+
+</body>
+</html>
