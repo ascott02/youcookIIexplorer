@@ -34,6 +34,7 @@ def get_video_info(data, video):
     vid_element = data['database'][video]
     output = []
     output.append("video_url: <a href=" + vid_element['video_url'] + '>' + vid_element['video_url'] + '</a><br>')
+    output.append("share: <a href=http://" + web.ctx.host + "/view/" + video + ">http://" + web.ctx.host + "/view/" + video + "</a><br>")
     output.append("video: " +  video + "<br>")
     output.append("subset: " + vid_element['subset'] + ' set' + "<br>")
     output.append("duration: " + str(format(int(vid_element['duration']//60),"02d")) + ":" + str(format(int(vid_element['duration']%60), "02d")) + ' minutes ' + "<br>")
@@ -53,7 +54,7 @@ for vid in vids:
     recipe_types.append(get_recipe_name(data, vid))
 
 render = web.template.render('templates') # your templates
-urls = ("/", "index")
+urls = ("/", "index", "/view/(.*)", "view")
 app = web.application(urls, globals())
 
 index_form = form.Form(
@@ -72,6 +73,19 @@ class index:
         vid_info = get_video_info(data, form.d.video)
         # print("DEBUG video:", form.d.video)
         return render.index(form, form.d.video, vid_info)
+
+class view:
+    def GET(self, video):
+        # form = index_form()
+        # form.validates()
+        form = web.form.Form(
+            web.form.Dropdown(name='video', args=zip(vids,[str(v)+"-"+str(i) for (i,v) in zip(vids,recipe_types)]), value=video),
+            web.form.Button("submit", type="submit"),
+        )
+
+        vid_info = get_video_info(data, video)
+        return render.index(form, video, vid_info)
+
 
 if __name__ == "__main__":
     app.run()
