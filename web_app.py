@@ -1,8 +1,12 @@
+import sys
+import os
 import web
 from web import form
 import json
 import csv
+import operator
 
+# for video explorer
 types = {}
 f = open('label_foodtype.csv', mode='r') 
 reader = csv.reader(f)
@@ -54,7 +58,7 @@ for vid in vids:
     recipe_types.append(get_recipe_name(data, vid))
 
 render = web.template.render('templates') # your templates
-urls = ("/", "index", "/view/(.*)", "view")
+urls = ("/", "index", "/view/(.*)", "view", "/keyframe_scores/(.*)/(\d+)", "keyframe_scores")
 app = web.application(urls, globals())
 
 index_form = form.Form(
@@ -85,6 +89,98 @@ class view:
 
         vid_info = get_video_info(data, video)
         return render.index(form, video, vid_info)
+
+class keyframe_scores:
+    def GET(self, subset="training", pagenum=1):
+
+        # for keyframe score explorer
+        training_keyframe_scores_file = "/mnt/sda1/youcookII/YouCookII/scripts/training_keyframe_scores_all.txt"
+        validation_keyframe_scores_file = "/mnt/sda1/youcookII/YouCookII/scripts/validation_keyframe_scores_all.txt"
+
+        # training_keyframe_images_dir = "/mnt/sda1/youcookII/YouCookII/keyframes/training_copy_flat"
+        # validation_keyframe_images_dir = "/mnt/sda1/youcookII/YouCookII/keyframes/validation_copy_flat"
+
+        url = "http://localhost:8080/"
+
+        if pagenum == None:
+            pagenum = 1
+
+        if subset == None:
+            subset = "training"
+
+        web.debug("DEBUG subset:", subset)
+        web.debug("DEBUG pagenum:", pagenum)
+
+        sentences = {}
+        scores = {}
+
+        filename = ''
+        if subset == "training":
+            filename = training_keyframe_scores_file
+            pathname = url + "static/training/"
+        elif subset == "validation":
+            filename = validation_keyframe_scores_file
+            pathname = url + "static/validation/"
+
+        fh = open(filename, 'r')
+        lines = fh.readlines()
+        fh.close()
+
+        for line in lines:
+            line = line.strip()
+            line = line.split(" ")
+            score, image, sentence=line[0], line[1], line[2:]
+
+            image = image.split("/")
+            sub, vid, seg, img = image[-4], image[-3], image[-2], image[-1]
+
+            index = "/".join([sub, vid, seg, img])
+            sentences[index] = sentence
+            scores[index] = float(score)
+
+        sorted_indexes = sorted(scores.items(), key=operator.itemgetter(1))
+
+        bottom = sorted_indexes[:10]
+        top = sorted_indexes[-10:]
+        # content = bottom + top
+
+        # print("Bottom 10")
+        # for i,v in bottom:
+        #     print("<a href="+i+">"+i+"</a>", str(scores[i]), " ".join(sentences[i]))
+
+        # print("Top 10")
+        # for i,v in top:
+        #     print("<a href="+i+">"+i+"</a>", str(scores[i]), " ".join(sentences[i]))
+
+        content = []
+        content.append("<div style='text-align: justify; width: 480px'><a href=" + url + "keyframe_scores/"+subset+"/"+str(1)+">begining</a>")
+        content.append("&nbsp;<a href=" + url + "keyframe_scores/"+subset+"/"+str(int(pagenum)-1)+">previous</a>")
+        content.append("&nbsp;<a href=" + url + "keyframe_scores/"+subset+"/"+str(int(pagenum)-10)+">-10</a>")
+        content.append("&nbsp;<a href=" + url + "keyframe_scores/"+subset+"/"+str(int(len(scores)//10)//2)+">middle</a>")
+        content.append("&nbsp;<a href=" + url + "keyframe_scores/"+subset+"/"+str(int(pagenum)+10)+">+10</a>")
+        content.append("&nbsp;<a href=" + url + "keyframe_scores/"+subset+"/"+str(int(pagenum)+1)+">next</a>")
+        content.append("&nbsp;<a href=" + url + "keyframe_scores/"+subset+"/"+str(int(len(scores)//10)+1)+">end</a>")
+        if subset == "training":
+            content.append(" - <a href=" + url + "keyframe_scores/validation/1>switch to validation</a>")
+        else:
+            content.append(" - <a href=" + url + "keyframe_scores/training/1>switch to training</a>")
+        content.append("</div><br>")
+        navigation = []
+        navigation += content
+
+        # for i,v in bottom + top:
+        start = (int(pagenum)-1)*10
+        for i,v in sorted_indexes[start:start+10]:
+            
+            image = i.split("/")
+            sub, vid, seg, img = image[-4], image[-3], image[-2], image[-1]
+            image_filename = vid + "_" + seg + "_" + img
+            image = pathname + image_filename
+
+            content.append("<a href='" + image + "'><img width='480px' src='"+image+"'></a><br>" + str(format(scores[i], ".8f")) + ", " + " ".join(sentences[i]) + "<br><br>")
+        content += navigation
+
+        return render.keyframe_scores(pagenum,content)
 
 
 if __name__ == "__main__":
