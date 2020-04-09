@@ -25,14 +25,15 @@ json_file = open('youcookii_annotations_trainval.json')
 data = json.load(json_file)
 
 # for keyframe score explorer
-training_keyframe_scores_file = "/mnt/sda1/youcookII/YouCookII/scripts/training_keyframe_scores_all.txt"
-validation_keyframe_scores_file = "/mnt/sda1/youcookII/YouCookII/scripts/validation_keyframe_scores_all.txt"
+# training_keyframe_scores_file = "/mnt/sda1/youcookII/YouCookII/scripts/training_keyframe_scores_all.txt"
+# validation_keyframe_scores_file = "/mnt/sda1/youcookII/YouCookII/scripts/validation_keyframe_scores_all.txt"
+training_keyframe_scores_file = "static/training_keyframe_scores_all.txt"
+validation_keyframe_scores_file = "static/validation_keyframe_scores_all.txt"
 
 # training_keyframe_images_dir = "/mnt/sda1/youcookII/YouCookII/keyframes/training_copy_flat"
 # validation_keyframe_images_dir = "/mnt/sda1/youcookII/YouCookII/keyframes/validation_copy_flat"
 
 url = "http://localhost:8080/"
-
 
 def print_video_info(data, video):
     vid_element = data['database'][video]
@@ -144,7 +145,9 @@ class view:
         )
 
         vid_info = get_video_info(data, video)
-        return render.index(form, video, vid_info)
+        keyframes,sentences,scores = get_keyframes_sentences_and_scores(data, form.d.video)
+
+        return render.index(form, form.d.video, vid_info, keyframes, sentences, scores)
 
 class keyframe_scores:
 
