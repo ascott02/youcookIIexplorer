@@ -1,4 +1,4 @@
-$def with(form, video, vid_info)
+$def with(form, video, vid_info, keyframes, sentences, scores)
 <!DOCTYPE html>
 <html>
 <body>
@@ -16,5 +16,7 @@ $if video != None:
     $for i in vid_info:
         $:i
 
+    $for i, frame in enumerate(keyframes):
+        <img width=560px src=$keyframes[i]><br>$scores[i]<br>$sentences[i]<br>
 </body>
 </html>

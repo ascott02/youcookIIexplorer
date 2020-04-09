@@ -24,6 +24,16 @@ for vid_file in vid_files:
 json_file = open('youcookii_annotations_trainval.json')
 data = json.load(json_file)
 
+# for keyframe score explorer
+training_keyframe_scores_file = "/mnt/sda1/youcookII/YouCookII/scripts/training_keyframe_scores_all.txt"
+validation_keyframe_scores_file = "/mnt/sda1/youcookII/YouCookII/scripts/validation_keyframe_scores_all.txt"
+
+# training_keyframe_images_dir = "/mnt/sda1/youcookII/YouCookII/keyframes/training_copy_flat"
+# validation_keyframe_images_dir = "/mnt/sda1/youcookII/YouCookII/keyframes/validation_copy_flat"
+
+url = "http://localhost:8080/"
+
+
 def print_video_info(data, video):
     vid_element = data['database'][video]
     print("video:", video) 
@@ -53,6 +63,48 @@ def get_recipe_name(data, video):
     vid_element = data['database'][video]
     return types[vid_element['recipe_type']]
 
+def get_keyframes_sentences_and_scores(data, video):
+    keyframes, vid_sentences, vid_scores = [], [], []
+    vid_element = data['database'][video]
+    subset = vid_element['subset']
+
+    sentences = {}
+    scores = {}
+    filename = ''
+    if subset == "training":
+        filename = training_keyframe_scores_file
+        pathname = url + "static/training/"
+    elif subset == "validation":
+        filename = validation_keyframe_scores_file
+        pathname = url + "static/validation/"
+
+    fh = open(filename, 'r')
+    lines = fh.readlines()
+    fh.close()
+
+    for line in lines:
+        line = line.strip()
+        line = line.split(" ")
+        score, image, sentence=line[0], line[1], line[2:]
+
+        image = image.split("/")
+        sub, vid, seg, img = image[-4], image[-3], image[-2], image[-1]
+
+        index = "_".join([sub, vid, seg, img])
+        sentences[index] = sentence
+        scores[index] = float(score)
+
+    for index in scores.keys():
+        # print("DEBUG index, video:", index, video)
+        start = subset + "_" + video
+        if index.startswith(start):
+            filename = index.lstrip(subset + "_")
+            keyframes.append(pathname + filename)
+            vid_sentences.append(sentences[index])
+            vid_scores.append(scores[index])
+
+    return keyframes, vid_sentences, vid_scores
+
 recipe_types = []
 for vid in vids:
     recipe_types.append(get_recipe_name(data, vid))
@@ -67,16 +119,20 @@ index_form = form.Form(
 )
 
 class index:
+
     def GET(self):
         form = index_form()
-        return render.index(form, None, None)
+        return render.index(form, None, None, None, None, None)
 
     def POST(self):
         form = index_form()
         form.validates()
         vid_info = get_video_info(data, form.d.video)
+
+        keyframes,sentences,scores = get_keyframes_sentences_and_scores(data, form.d.video)
         # print("DEBUG video:", form.d.video)
-        return render.index(form, form.d.video, vid_info)
+        print("DEBUG keyframes, sentences, scores:", keyframes, sentences, scores)
+        return render.index(form, form.d.video, vid_info, keyframes, sentences, scores)
 
 class view:
     def GET(self, video):
@@ -91,16 +147,8 @@ class view:
         return render.index(form, video, vid_info)
 
 class keyframe_scores:
+
     def GET(self, subset="training", pagenum=1):
-
-        # for keyframe score explorer
-        training_keyframe_scores_file = "/mnt/sda1/youcookII/YouCookII/scripts/training_keyframe_scores_all.txt"
-        validation_keyframe_scores_file = "/mnt/sda1/youcookII/YouCookII/scripts/validation_keyframe_scores_all.txt"
-
-        # training_keyframe_images_dir = "/mnt/sda1/youcookII/YouCookII/keyframes/training_copy_flat"
-        # validation_keyframe_images_dir = "/mnt/sda1/youcookII/YouCookII/keyframes/validation_copy_flat"
-
-        url = "http://localhost:8080/"
 
         if pagenum == None:
             pagenum = 1
